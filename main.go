@@ -19,9 +19,10 @@ var responses = make([]*Rsvp, 0, 10)
 var templates = make(map[string]*template.Template, 3)
 
 func loadTemplates() {
+	path := "templates"
 	templateNames := [5]string{"welcome", "form", "thanks", "sorry", "list"}
 	for index, name := range templateNames {
-		t, err := template.ParseFiles("layout.html", name+".html")
+		t, err := template.ParseFiles(path+"/"+"layout.html", path+"/"+name+".html")
 		if err == nil {
 			templates[name] = t
 			fmt.Println("loaded template", index, name)
