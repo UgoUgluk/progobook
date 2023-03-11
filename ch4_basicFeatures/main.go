@@ -1,10 +1,12 @@
 package main
 
-import (
-	"fmt"
-	"math/rand"
-)
+import "fmt"
 
 func main() {
-	fmt.Println(rand.Int())
+	first := 100
+	second := &first
+	third := &second
+	fmt.Println(first)
+	fmt.Println(*second)
+	fmt.Println(**third)
 }
