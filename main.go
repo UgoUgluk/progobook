@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"reflect"
 )
 
 type Rsvp struct {
@@ -55,7 +56,17 @@ func formHandler(writer http.ResponseWriter, request *http.Request) {
 		}
 
 		errors := []string{}
-		if responseData.Name == "" {
+
+		//struct iterate and check errors
+		responseStruct := reflect.ValueOf(responseData)
+
+		for i := 0; i < responseStruct.NumField(); i++ {
+			//fmt.Printf("Field: %s\tValue: %v\n", responseStruct.Type().Field(i).Name, responseStruct.Field(i).Interface())
+			if responseStruct.Field(i).Interface() == "" {
+				errors = append(errors, "Please enter your "+responseStruct.Type().Field(i).Name)
+			}
+		}
+		/*if responseData.Name == "" {
 			errors = append(errors, "Please enter your name")
 		}
 		if responseData.Email == "" {
@@ -63,7 +74,7 @@ func formHandler(writer http.ResponseWriter, request *http.Request) {
 		}
 		if responseData.Phone == "" {
 			errors = append(errors, "Please enter your phone number")
-		}
+		}*/
 		if len(errors) > 0 {
 			templates["form"].Execute(writer, formData{
 				Rsvp:   &responseData,
