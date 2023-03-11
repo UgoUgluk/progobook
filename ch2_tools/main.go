@@ -1,4 +1,3 @@
-// package ch2_tools
 package main
 
 import "fmt"
@@ -10,15 +9,12 @@ func main() {
 	}
 }
 
-// revive:disable:exported
-
+//PrintHello out Hello message
 func PrintHello() {
 	fmt.Println("Hello, Go")
 }
 
-// revive:enable:exported
-
-// PrintNumber writes a number using the fmt.Println function
+//PrintNumber out Number message
 func PrintNumber(number int) {
 	fmt.Println(number)
 }
