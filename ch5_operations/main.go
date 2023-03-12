@@ -1,7 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 func main() {
-	fmt.Println("Hello, Operations")
+	val := 49.95
+	Fstring := strconv.FormatFloat(val, 'f', 2, 64)
+	Estring := strconv.FormatFloat(val, 'e', -1, 64)
+	fmt.Println("Format F: " + Fstring)
+	fmt.Println("Format E: " + Estring)
 }
