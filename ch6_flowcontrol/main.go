@@ -1,17 +1,21 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	//"strconv"
+)
 
 func main() {
-	kayakPrice := 275.00
-	if kayakPrice > 500 {
-		scopedVar := 500
-		fmt.Println("Price is greater than", scopedVar)
-	} else if kayakPrice < 100 {
-		scopedVar := "Price is less than 100"
-		fmt.Println(scopedVar)
-	} else {
-		scopedVar := false
-		fmt.Println("Matched: ", scopedVar)
+	product := "Kayak"
+	for index, character := range product {
+		switch character {
+		case 'K':
+			fmt.Println("Uppercase character")
+			fallthrough
+		case 'k':
+			fmt.Println("k at position", index)
+		case 'y':
+			fmt.Println("y at position", index)
+		}
 	}
 }
