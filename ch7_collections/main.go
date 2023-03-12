@@ -51,7 +51,7 @@ func main() {
 		fmt.Println("Key:", key, "Value:", products[key])
 	}
 
-	//string as array
+	//string as array.. len(€48.95) == 8 ... woow
 	var price string = "€48.95"
 	var currency byte = price[0]
 	var currency2 string = string(price[0])
@@ -64,6 +64,25 @@ func main() {
 		fmt.Println("Amount:", amount)
 	} else {
 		fmt.Println("Parse Error:", parseErr)
+	}
+
+	//len(€48.95) == 8 -- rune fix it
+	var price2 []rune = []rune(price)
+	var currency3 string = string(price2[0])
+	var amountString2 string = string(price2[1:])
+	amount2, parseErr2 := strconv.ParseFloat(amountString2, 64)
+	fmt.Println("Length:", len(price2))
+	fmt.Println("Currency:", currency3)
+	if parseErr2 == nil {
+		fmt.Println("Amount:", amount2)
+	} else {
+		fmt.Println("Parse Error:", parseErr2)
+	}
+	//string it's array of bytes! Remember that
+
+	//for range: treats strings as a sequence of runes, but index == bites
+	for index, char := range price {
+		fmt.Println(index, char, string(char))
 	}
 
 }
