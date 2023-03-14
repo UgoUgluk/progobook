@@ -1,23 +1,16 @@
 package main
 
-//CategoryError error handling
-type CategoryError struct {
-	requestedCategory string
-}
-
-func (e *CategoryError) Error() string {
-	return "Category " + e.requestedCategory + " does not exist"
-}
+import "fmt"
 
 //ChannelMessage channel for errors
 type ChannelMessage struct {
-	Category string
-	Total    float64
-	*CategoryError
+	Category      string
+	Total         float64
+	CategoryError error
 }
 
 // TotalPrice calc sum prices of group
-func (slice ProductSlice) TotalPrice(category string) (total float64, err *CategoryError) {
+func (slice ProductSlice) TotalPrice(category string) (total float64, err error) {
 	productCount := 0
 	for _, p := range slice {
 		if p.Category == category {
@@ -26,7 +19,8 @@ func (slice ProductSlice) TotalPrice(category string) (total float64, err *Categ
 		}
 	}
 	if productCount == 0 {
-		err = &CategoryError{requestedCategory: category}
+		//err = errors.New("Cannot find category")
+		err = fmt.Errorf("Cannot find category: %v", category)
 	}
 	return
 }
