@@ -8,35 +8,22 @@ type Expense interface {
 	getCost(annual bool) float64
 }
 
-func calcTotal(expenses []Expense) (total float64) {
-	for _, item := range expenses {
-		total += item.getCost(true)
-	}
-	return
-}
-
-// Account represents a account
-type Account struct {
-	accountNumber int
-	expenses      []Expense
-}
-
 func main() {
-	account := Account{
-		accountNumber: 12345,
-		expenses: []Expense{
-			Product{"Kayak", "Watersports", 275},
-			Service{"Boat Cover", 12, 89.50},
-		},
-	}
-
-	for _, expense := range account.expenses {
-		fmt.Println(
-			"Expense:", expense.getName(),
-			"Cost:", expense.getCost(true),
-		)
-	}
-
-	fmt.Println("Total:", calcTotal(account.expenses))
-
+	product := Product{"Kayak", "Watersports", 275}
+	var expense Expense = &product
+	product.price = 100
+	fmt.Println("Product field value:", product.price)
+	fmt.Println(
+		"Expense method result:",
+		expense.getCost(false),
+	)
+	//compare
+	var e1 Expense = &Product{name: "Kayak"}
+	var e2 Expense = &Product{name: "Kayak"}
+	var e3 Expense = Service{description: "Boat Cover"}
+	var e4 Expense = Service{description: "Boat Cover"}
+	fmt.Println("e1 == e2", e1 == e2) //false because different place of memory
+	fmt.Println("e3 == e4", e3 == e4)
+	fmt.Println(e1)
+	fmt.Println(e2)
 }
