@@ -2,3 +2,4 @@ go 1.20
 
 use ./ch11_methodAndInterfaces
 use ./ch12_packages
+use ./ch13_composition
