@@ -5,7 +5,6 @@ type Boat struct {
 	*Product
 	Capacity  int
 	Motorized bool
-	Name      string
 }
 
 //NewBoat create new boat
@@ -14,6 +13,5 @@ func NewBoat(name string, price float64, capacity int, motorized bool) *Boat {
 		NewProduct(name, "Watersports", price),
 		capacity,
 		motorized,
-		"teest",
 	}
 }
