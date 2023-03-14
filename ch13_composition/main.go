@@ -64,4 +64,31 @@ func main() {
 	//fmt.Println("Price:", bundle.Price(0)) - error: ambiguous selector bundle.Price
 	fmt.Println("Price:", bundle.SpecialDeal.Price(0))
 	fmt.Println("Price:", bundle.Product.Price(0))
+
+	products := map[string]store.ItemForSale{
+		"Kayak": store.NewBoat("Kayak", 279, 1, false),
+		"Ball":  store.NewProduct("Soccer Ball", "Soccer", 19.50),
+	}
+	for key, p := range products {
+		fmt.Println(
+			//"Name:", p.Name,
+			//"Category:", p.Category,
+			"Price:", p.Price(0.2),
+		)
+		switch item := p.(type) {
+		case store.Describable:
+			fmt.Println(
+				"Name:", item.GetName(),
+				"Category:", item.GetCategory(),
+				"Price:", item.Price(0.2),
+			)
+		default:
+			fmt.Println(
+				"Key:", key,
+				"Price:", p.Price(0.2),
+			)
+		}
+
+	}
+
 }
