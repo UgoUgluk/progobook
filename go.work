@@ -7,3 +7,4 @@ use ./ch14_concurrency
 use ./ch15_errorHandling
 use ./ch16_stringsandregexp
 use ./ch17_usingstrings
+use ./ch18_mathandsorting
