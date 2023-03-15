@@ -6,3 +6,4 @@ use ./ch13_composition
 use ./ch14_concurrency
 use ./ch15_errorHandling
 use ./ch16_stringsandregexp
+use ./ch17_usingstrings
