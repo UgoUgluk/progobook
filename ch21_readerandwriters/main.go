@@ -1,68 +1,47 @@
 package main
 
 import (
-	//"bufio"
+	"encoding/json"
 	"fmt"
-	"io"
 	"strings"
 )
 
-func scanFromReader(reader io.Reader, template string, vals ...interface{}) (int, error) {
-	return fmt.Fscanf(reader, template, vals...)
-}
-func scanSingle(reader io.Reader, val interface{}) (int, error) {
-	return fmt.Fscan(reader, val)
-}
-
-func writeFormatted(writer io.Writer, template string, vals ...interface{}) {
-	fmt.Fprintf(writer, template, vals...)
-}
-
-func writeReplaced(writer io.Writer, str string, subs ...string) {
-	replacer := strings.NewReplacer(subs...)
-	replacer.WriteString(writer, str)
-}
-
 func main() {
+	names := []string{"Kayak", "Lifejacket", "Soccer Ball"}
+	numbers := [3]int{10, 20, 30}
+	var byteArray [5]byte
+	copy(byteArray[0:], []byte(names[0]))
+	byteSlice := []byte(names[0])
 
-	//scanFromReader
-	reader := strings.NewReader("Kayak Watersports $279.00")
-	var name, category string
-	var price float64
-	scanTemplate := "%s %s $%f"
-	_, err := scanFromReader(reader, scanTemplate, &name, &category, &price)
-	if err != nil {
-		Printfln("Error: %v", err.Error())
-	} else {
-		Printfln("Name: %v", name)
-		Printfln("Category: %v", category)
-		Printfln("Price: %.2f", price)
+	m := map[string]float64{
+		"Kayak":      279,
+		"Lifejacket": 49.95,
 	}
 
-	//scanSingle
-	reader2 := strings.NewReader("Kayak Watersports $279.00")
-	for {
-		var str string
-		_, err := scanSingle(reader2, &str)
-		if err != nil {
-			if err != io.EOF {
-				Printfln("Error: %v", err.Error())
-			}
-			break
-		}
-		Printfln("Value: %v", str)
+	dp := DiscountedProduct{
+		Product:  &Kayak,
+		Discount: 10.50,
 	}
 
-	//writeFormatted
 	var writer strings.Builder
-	template := "Name: %s, Category: %s, Price: $%.2f"
-	writeFormatted(&writer, template, "Kayak", "Watersports", float64(279))
-	fmt.Println(writer.String())
+	encoder := json.NewEncoder(&writer)
+	encoder.Encode(names)
+	encoder.Encode(numbers)
+	encoder.Encode(byteArray)
+	encoder.Encode(byteSlice)
 
-	//writeReplaced
-	text := "It was a boat. A small boat."
-	subs := []string{"boat", "kayak", "small", "huge"}
-	var writer2 strings.Builder
-	writeReplaced(&writer2, text, subs...)
-	fmt.Println(writer2.String())
+	encoder.Encode(m)
+
+	encoder.Encode(Kayak)
+
+	encoder.Encode(&dp)
+
+	dp2 := DiscountedProduct{Discount: 10.50}
+	encoder.Encode(&dp2)
+
+	namedItems := []Named{&dp, &Person{PersonName: "Alice"}}
+	encoder.Encode(namedItems)
+
+	fmt.Print(writer.String())
+
 }
