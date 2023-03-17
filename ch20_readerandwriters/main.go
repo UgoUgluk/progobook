@@ -1,66 +1,43 @@
 package main
 
 import (
-	"io"
+	"bufio"
+	//"io"
 	"strings"
 )
 
-/*
-	func processData(reader io.Reader, writer io.Writer) {
-		count, err := io.Copy(writer, reader)
-		if err == nil {
-			Printfln("Read %v bytes", count)
-		} else {
-			Printfln("Error: %v", err.Error())
-		}
-
-}
-*/
 func main() {
-	/*r := strings.NewReader("Kayak")
-	var builder strings.Builder
-	//Copy form r to builder
-	processData(r, &builder)
-	Printfln("String builder contents: %s", builder.String())*/
 
-	//Pipe
-	pipeReader, pipeWriter := io.Pipe()
-	go GenerateData(pipeWriter)
-	ConsumeData(pipeReader)
-
-	//MultiReader
-	r1 := strings.NewReader("Kayak")
-	r2 := strings.NewReader("Lifejacket")
-	r3 := strings.NewReader("Canoe")
-	concatReader := io.MultiReader(r1, r2, r3)
-	ConsumeData(concatReader)
-
-	//MultiWriter
-	var w1 strings.Builder
-	var w2 strings.Builder
-	var w3 strings.Builder
-	combinedWriter := io.MultiWriter(&w1, &w2, &w3)
-	GenerateData(combinedWriter)
-	Printfln("Writer #1: %v", w1.String())
-	Printfln("Writer #2: %v", w2.String())
-	Printfln("Writer #3: %v", w3.String())
-
-	//TeeReader
-	r4 := strings.NewReader("Kayak")
-	r5 := strings.NewReader("Lifejacket")
-	r6 := strings.NewReader("Canoe")
-	concatReader2 := io.MultiReader(r4, r5, r6)
+	text := "It was a boat. A small boat."
+	/*var reader io.Reader = NewCustomReader(strings.NewReader(text))
 	var writer strings.Builder
-	teeReader := io.TeeReader(concatReader2, &writer)
-	ConsumeData(teeReader)
-	Printfln("Echo data: %v", writer.String())
+	slice := make([]byte, 5)
 
-	//LimitReader
-	r7 := strings.NewReader("Kayak")
-	r8 := strings.NewReader("Lifejacket")
-	r9 := strings.NewReader("Canoe")
-	concatReader3 := io.MultiReader(r7, r8, r9)
-	limited := io.LimitReader(concatReader3, 5)
-	ConsumeData(limited)
+	buffered := bufio.NewReader(reader)
+
+	for {
+		count, err := buffered.Read(slice)
+		if count > 0 {
+			Printfln("Buffer size: %v, buffered: %v", buffered.Size(), buffered.Buffered())
+			writer.Write(slice[0:count])
+		}
+		if err != nil {
+			break
+		}
+	}
+	Printfln("Read data: %v", writer.String())*/
+	var builder strings.Builder
+	var writer = bufio.NewWriterSize(NewCustomWriter(&builder), 20)
+	for i := 0; true; {
+		end := i + 5
+		if end >= len(text) {
+			writer.Write([]byte(text[i:]))
+			writer.Flush()
+			break
+		}
+		writer.Write([]byte(text[i:end]))
+		i = end
+	}
+	Printfln("Written data: %v", builder.String())
 
 }
