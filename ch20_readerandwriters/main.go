@@ -1,43 +1,68 @@
 package main
 
 import (
-	"bufio"
-	//"io"
+	//"bufio"
+	"fmt"
+	"io"
 	"strings"
 )
 
+func scanFromReader(reader io.Reader, template string, vals ...interface{}) (int, error) {
+	return fmt.Fscanf(reader, template, vals...)
+}
+func scanSingle(reader io.Reader, val interface{}) (int, error) {
+	return fmt.Fscan(reader, val)
+}
+
+func writeFormatted(writer io.Writer, template string, vals ...interface{}) {
+	fmt.Fprintf(writer, template, vals...)
+}
+
+func writeReplaced(writer io.Writer, str string, subs ...string) {
+	replacer := strings.NewReplacer(subs...)
+	replacer.WriteString(writer, str)
+}
+
 func main() {
 
-	text := "It was a boat. A small boat."
-	/*var reader io.Reader = NewCustomReader(strings.NewReader(text))
-	var writer strings.Builder
-	slice := make([]byte, 5)
+	//scanFromReader
+	reader := strings.NewReader("Kayak Watersports $279.00")
+	var name, category string
+	var price float64
+	scanTemplate := "%s %s $%f"
+	_, err := scanFromReader(reader, scanTemplate, &name, &category, &price)
+	if err != nil {
+		Printfln("Error: %v", err.Error())
+	} else {
+		Printfln("Name: %v", name)
+		Printfln("Category: %v", category)
+		Printfln("Price: %.2f", price)
+	}
 
-	buffered := bufio.NewReader(reader)
-
+	//scanSingle
+	reader2 := strings.NewReader("Kayak Watersports $279.00")
 	for {
-		count, err := buffered.Read(slice)
-		if count > 0 {
-			Printfln("Buffer size: %v, buffered: %v", buffered.Size(), buffered.Buffered())
-			writer.Write(slice[0:count])
-		}
+		var str string
+		_, err := scanSingle(reader2, &str)
 		if err != nil {
+			if err != io.EOF {
+				Printfln("Error: %v", err.Error())
+			}
 			break
 		}
+		Printfln("Value: %v", str)
 	}
-	Printfln("Read data: %v", writer.String())*/
-	var builder strings.Builder
-	var writer = bufio.NewWriterSize(NewCustomWriter(&builder), 20)
-	for i := 0; true; {
-		end := i + 5
-		if end >= len(text) {
-			writer.Write([]byte(text[i:]))
-			writer.Flush()
-			break
-		}
-		writer.Write([]byte(text[i:end]))
-		i = end
-	}
-	Printfln("Written data: %v", builder.String())
 
+	//writeFormatted
+	var writer strings.Builder
+	template := "Name: %s, Category: %s, Price: $%.2f"
+	writeFormatted(&writer, template, "Kayak", "Watersports", float64(279))
+	fmt.Println(writer.String())
+
+	//writeReplaced
+	text := "It was a boat. A small boat."
+	subs := []string{"boat", "kayak", "small", "huge"}
+	var writer2 strings.Builder
+	writeReplaced(&writer2, text, subs...)
+	fmt.Println(writer2.String())
 }
