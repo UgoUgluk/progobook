@@ -20,8 +20,11 @@ func GetCategories(products []Product) (categories []string) {
 
 // Exec Exec Template
 func Exec(t *template.Template) error {
-	//return t.Execute(os.Stdout, &Kayak)
-	return t.Execute(os.Stdout, Products)
+	productMap := map[string]Product{}
+	for _, p := range Products {
+		productMap[p.Name] = p
+	}
+	return t.Execute(os.Stdout, &productMap)
 }
 
 func main() {

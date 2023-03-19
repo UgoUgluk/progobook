@@ -1,9 +1,5 @@
 {{ define "mainTemplate" -}}
-    {{ $length := len . }}
-    <h1>There are {{ $length }} products in the source data.</h1>
-    {{- range getCats . -}}
-        {{ if ne ($char := slice (lower .) 0 1) "s"  }}
-            <h1>{{$char}}: {{.}}</h1>
-        {{- end }}
-    {{- end }}
+    {{ range $key, $value := . -}}
+        <h1>{{ $key }}: {{ printf "$%.2f" $value.Price }}</h1>
+    {{ end }}
 {{ end }}
