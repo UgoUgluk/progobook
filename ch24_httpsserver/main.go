@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"net/http"
+	"strings"
 )
 
 // StringHandler handle string
@@ -11,21 +12,35 @@ type StringHandler struct {
 }
 
 func (sh StringHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	Printfln("Method: %v", request.Method)
-	Printfln("URL: %v", request.URL)
-	Printfln("HTTP Version: %v", request.Proto)
-	Printfln("Host: %v", request.Host)
-	for name, val := range request.Header {
-		Printfln("Header: %v, Value: %v", name, val)
-	}
-	Printfln("---")
-
+	Printfln("Request for %v", request.URL.Path)
 	io.WriteString(writer, sh.message)
-	//writer.Write([]byte(sh.message))
 }
+
+// HTTPSRedirect redirect from http to https
+func HTTPSRedirect(writer http.ResponseWriter,
+	request *http.Request) {
+	host := strings.Split(request.Host, ":")[0]
+	target := "https://" + host + ":5500" + request.URL.Path
+	if len(request.URL.RawQuery) > 0 {
+		target += "?" + request.URL.RawQuery
+	}
+	http.Redirect(writer, request, target, http.StatusTemporaryRedirect)
+}
+
 func main() {
-	err := http.ListenAndServe(":5000", StringHandler{message: "Hello, World2"})
+	http.Handle("/message", StringHandler{"Hello, World"})
+	http.Handle("/favicon.ico", http.NotFoundHandler())
+	http.Handle("/", http.RedirectHandler("/message", http.StatusTemporaryRedirect))
+	go func() {
+		err := http.ListenAndServeTLS(":5500", "certificate.cer", "certificate.pkey", nil)
+		if err != nil {
+			Printfln("HTTPS Error: %v", err.Error())
+		}
+	}()
+
+	err := http.ListenAndServe(":5000", http.HandlerFunc(HTTPSRedirect))
 	if err != nil {
 		Printfln("Error: %v", err.Error())
 	}
+
 }

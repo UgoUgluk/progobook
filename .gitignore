@@ -1,0 +1,4 @@
+ch24_httpsserver/certificate.csr
+ch24_httpsserver/certificate.p12
+ch24_httpsserver/certificate.pkey
+ch24_httpsserver/certificate.cer
