@@ -1,9 +1,16 @@
-<h1>Template Value: {{ . }}</h1>
-<h1>
-    {{- "" -}} Name: {{ .Name }}, Category: {{ .Category }}, Price,
-    {{- printf "$%.2f" .Price -}}
-</h1>
-<h1>Category: {{ .Category }}</h1>
-<h1>Price: {{ printf "$%.2f" .Price }}</h1>
-<h1>Tax: {{ printf "$%.2f" .AddTax }}</h1>
-<h1>Discount Price: {{ .ApplyDiscount 10 | printf "$%.2f" }}</h1>
+<h1>There are {{ len . }} products in the source data.</h1>
+<h1>First product: {{ index . 0 }}</h1>
+{{ range slice . 3 5 -}}
+    <h1>Name: {{ .Name }}, Category: {{ .Category }}, Price,
+    {{- printf "$%.2f" .Price }}</h1>
+{{ end }}
+<h1>IF</h1>
+{{ range . -}}
+    {{ if lt .Price 100.00 -}}
+        <h1>Name: {{ .Name }}, Category: {{ .Category }}, Price, {{- printf "$%.2f" .Price }}</h1>
+    {{ else if gt .Price 1500.00 -}}
+        <h1>Expensive Product {{ .Name }} ({{- printf "$%.2f" .Price}})</h1>
+    {{ else -}}
+        <h1>Midrange Product: {{ .Name }} ({{- printf "$%.2f" .Price}})</h1>        
+    {{ end -}}
+{{ end }}
