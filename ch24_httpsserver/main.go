@@ -31,6 +31,11 @@ func main() {
 	http.Handle("/message", StringHandler{"Hello, World"})
 	http.Handle("/favicon.ico", http.NotFoundHandler())
 	http.Handle("/", http.RedirectHandler("/message", http.StatusTemporaryRedirect))
+
+	//FileServer
+	fsHandler := http.FileServer(http.Dir("./static"))
+	http.Handle("/files/", http.StripPrefix("/files", fsHandler))
+
 	go func() {
 		err := http.ListenAndServeTLS(":5500", "certificate.cer", "certificate.pkey", nil)
 		if err != nil {
