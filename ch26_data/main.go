@@ -18,51 +18,20 @@ type Product struct {
 	Price float64
 }
 
-func queryDatabase(db *sql.DB, id int) (p Product) {
-	row := db.QueryRow(`
-	SELECT Products.Id, Products.Name, Products.Price,
-	Categories.Id as Cat_Id, Categories.Name as CatName
+func queryDatabase(db *sql.DB) (products []Product, err error) {
+	rows, err := db.Query(`SELECT Products.Id, Products.Name,
+		Products.Price,
+		Categories.Id as "Category.Id", Categories.Name as
+		"Category.Name"
 	FROM Products, Categories
-	WHERE Products.Category = Categories.Id
-	AND Products.Id = ?`, id)
-	if row.Err() == nil {
-		scanErr := row.Scan(&p.ID, &p.Name, &p.Price,
-			&p.Category.ID, &p.Category.Name)
-		if scanErr != nil {
-			Printfln("Scan error: %v", scanErr)
-		}
-	} else {
-		Printfln("Row error: %v", row.Err().Error())
-	}
-	return
-}
-
-func insertAndUseCategory(db *sql.DB, name string, productIDs ...int) (err error) {
-	tx, err := db.Begin()
-	updatedFailed := false
+	WHERE Products.Category = Categories.Id`)
 	if err == nil {
-		catResult, err := tx.Stmt(insertNewCategory).Exec(name)
+		results, err := scanIntoStruct(rows, &Product{})
 		if err == nil {
-			newID, _ := catResult.LastInsertId()
-			preparedStatement := tx.Stmt(changeProductCategory)
-			for _, id := range productIDs {
-				changeResult, err := preparedStatement.Exec(newID, id)
-				if err == nil {
-					changes, _ := changeResult.RowsAffected()
-					if changes == 0 {
-						updatedFailed = true
-						break
-					}
-				}
-			}
-
+			products = (results).([]Product)
+		} else {
+			Printfln("Scanning error: %v", err)
 		}
-	}
-	if err != nil || updatedFailed {
-		Printfln("Aborting transaction %v", err)
-		tx.Rollback()
-	} else {
-		tx.Commit()
 	}
 	return
 }
@@ -71,10 +40,10 @@ func main() {
 	//listDrivers()
 	db, err := openDatabase()
 	if err == nil {
-		insertAndUseCategory(db, "Category_1", 2)
-		p := queryDatabase(db, 2)
-		Printfln("Product: %v", p)
-		insertAndUseCategory(db, "Category_2", 100)
+		products, _ := queryDatabase(db)
+		for _, p := range products {
+			Printfln("Product: %v", p)
+		}
 
 		db.Close()
 	} else {
