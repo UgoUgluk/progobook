@@ -18,49 +18,56 @@ type Product struct {
 	Price float64
 }
 
-func queryDatabase(db *sql.DB, categoryName string) []Product {
-	products := []Product{}
-	rows, err := db.Query(`
-		SELECT Products.Id, Products.Name, Products.Price,
-			Categories.Id as Cat_Id, Categories.Name as CatName
-			FROM Products, Categories
-		WHERE Products.Category = Categories.Id 
-			AND Categories.Name = ?`, categoryName)
-	if err == nil {
-		for rows.Next() {
-			p := Product{}
-			scanErr := rows.Scan(
-				&p.ID,
-				&p.Name,
-				&p.Price,
-				&p.Category.ID,
-				&p.Category.Name,
-			)
-			if scanErr == nil {
-				products = append(products, p)
-			} else {
-				Printfln("Scan error: %v", scanErr)
-				break
-			}
-
+func queryDatabase(db *sql.DB, id int) (p Product) {
+	row := db.QueryRow(`
+	SELECT Products.Id, Products.Name, Products.Price,
+	Categories.Id as Cat_Id, Categories.Name as CatName
+	FROM Products, Categories
+	WHERE Products.Category = Categories.Id
+	AND Products.Id = ?`, id)
+	if row.Err() == nil {
+		scanErr := row.Scan(&p.ID, &p.Name, &p.Price,
+			&p.Category.ID, &p.Category.Name)
+		if scanErr != nil {
+			Printfln("Scan error: %v", scanErr)
 		}
 	} else {
-		Printfln("Error: %v", err)
+		Printfln("Row error: %v", row.Err().Error())
 	}
-	return products
+	return
+}
+
+func insertRow(db *sql.DB, p *Product) (id int64) {
+	res, err := db.Exec(`
+	INSERT INTO Products (Name, Category, Price)
+	VALUES (?, ?, ?)`, p.Name, p.Category.ID, p.Price)
+	if err == nil {
+		id, err = res.LastInsertId()
+		if err != nil {
+			Printfln("Result error: %v", err.Error())
+		}
+	} else {
+		Printfln("Exec error: %v", err.Error())
+	}
+	return
 }
 
 func main() {
 	//listDrivers()
 	db, err := openDatabase()
 	if err == nil {
-		for _, cat := range []string{"Soccer", "Watersports"} {
-			Printfln("--- %v Results ---", cat)
-			products := queryDatabase(db, cat)
-			for i, p := range products {
-				Printfln("#%v: %v", i, p)
-			}
+		//QueryRow
+		for _, id := range []int{1, 3, 10} {
+			p := queryDatabase(db, id)
+			Printfln("Product: %v", p)
 		}
+
+		//Exec
+		newProduct := Product{Name: "Stadium", Category: Category{ID: 2}, Price: 79500}
+		newID := insertRow(db, &newProduct)
+		p := queryDatabase(db, int(newID))
+		Printfln("New Product: %v", p)
+
 		db.Close()
 	} else {
 		panic(err)
