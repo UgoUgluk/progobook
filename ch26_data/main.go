@@ -37,25 +37,44 @@ func queryDatabase(db *sql.DB, id int) (p Product) {
 	return
 }
 
-func insertAndUseCategory(name string, productIDs ...int) {
-	result, err := insertNewCategory.Exec(name)
+func insertAndUseCategory(db *sql.DB, name string, productIDs ...int) (err error) {
+	tx, err := db.Begin()
+	updatedFailed := false
 	if err == nil {
-		newID, _ := result.LastInsertId()
-		for _, id := range productIDs {
-			changeProductCategory.Exec(int(newID), id)
+		catResult, err := tx.Stmt(insertNewCategory).Exec(name)
+		if err == nil {
+			newID, _ := catResult.LastInsertId()
+			preparedStatement := tx.Stmt(changeProductCategory)
+			for _, id := range productIDs {
+				changeResult, err := preparedStatement.Exec(newID, id)
+				if err == nil {
+					changes, _ := changeResult.RowsAffected()
+					if changes == 0 {
+						updatedFailed = true
+						break
+					}
+				}
+			}
+
 		}
-	} else {
-		Printfln("Prepared statement error: %v", err)
 	}
+	if err != nil || updatedFailed {
+		Printfln("Aborting transaction %v", err)
+		tx.Rollback()
+	} else {
+		tx.Commit()
+	}
+	return
 }
 
 func main() {
 	//listDrivers()
 	db, err := openDatabase()
 	if err == nil {
-		insertAndUseCategory("Misc Products", 2)
+		insertAndUseCategory(db, "Category_1", 2)
 		p := queryDatabase(db, 2)
 		Printfln("Product: %v", p)
+		insertAndUseCategory(db, "Category_2", 100)
 
 		db.Close()
 	} else {
