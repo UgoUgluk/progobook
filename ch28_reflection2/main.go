@@ -2,31 +2,41 @@ package main
 
 import (
 	"reflect"
-	//"strings"
+	"strings"
 	// "fmt"
 )
 
-func swap(first interface{}, second interface{}) {
-	firstValue, secondValue := reflect.ValueOf(first),
-		reflect.ValueOf(second)
-	if firstValue.Type() == secondValue.Type() &&
-		firstValue.Kind() == reflect.Ptr &&
-		firstValue.Elem().CanSet() &&
-		secondValue.Elem().CanSet() {
-		temp := reflect.New(firstValue.Elem().Type())
-		temp.Elem().Set(firstValue.Elem())
-		firstValue.Elem().Set(secondValue.Elem())
-		secondValue.Elem().Set(temp.Elem())
+var stringPtrType = reflect.TypeOf((*string)(nil))
+
+func transformString(val interface{}) {
+	elemValue := reflect.ValueOf(val)
+	if elemValue.Type() == stringPtrType {
+		upperStr := strings.ToUpper(elemValue.Elem().String())
+		if elemValue.Elem().CanSet() {
+			elemValue.Elem().SetString(upperStr)
+		}
 	}
+}
+
+func createPointerType(t reflect.Type) reflect.Type {
+	return reflect.PtrTo(t)
+}
+func followPointerType(t reflect.Type) reflect.Type {
+	if t.Kind() == reflect.Ptr {
+		return t.Elem()
+	}
+	return t
 }
 
 func main() {
 	name := "Alice"
-	price := 279
-	city := "London"
-	swap(&name, &city)
-	for _, val := range []interface{}{name, price, city} {
-		Printfln("Value: %v", val)
-	}
+	t := reflect.TypeOf(name)
+	Printfln("Original Type: %v", t)
+	pt := createPointerType(t)
+	Printfln("Pointer Type: %v", pt)
+	Printfln("Follow pointer type: %v", followPointerType(pt))
+
+	transformString(&name)
+	Printfln("Follow pointer value: %v", name)
 
 }
