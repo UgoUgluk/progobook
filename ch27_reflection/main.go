@@ -2,81 +2,76 @@ package main
 
 import (
 	"reflect"
-	"strings"
+	//"strings"
+	// "fmt"
 )
 
-func selectValue(data interface{}, index int) (result interface{}) {
-	dataVal := reflect.ValueOf(data)
-	if dataVal.Kind() == reflect.Slice {
-		result = dataVal.Index(index).Interface()
+func isInt(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16,
+		reflect.Int32, reflect.Int64:
+		return true
 	}
-	return
+	return false
 }
-func incrementOrUpper(values ...interface{}) {
-	for _, elem := range values {
-		elemValue := reflect.ValueOf(elem)
-		if elemValue.CanSet() {
-			switch elemValue.Kind() {
-			case reflect.Int:
-				elemValue.SetInt(elemValue.Int() + 1)
-			case reflect.String:
-				elemValue.SetString(strings.ToUpper(
-					elemValue.String()))
-			}
-			Printfln("Modified Value: %v", elemValue)
-		} else {
-			Printfln("Cannot set %v: %v", elemValue.Kind(),
-				elemValue)
-		}
+func isFloat(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Float32, reflect.Float64:
+		return true
 	}
+	return false
 }
 
-func setAll(src interface{}, targets ...interface{}) {
+func convert(src, target interface{}) (result interface{},
+	assigned bool) {
 	srcVal := reflect.ValueOf(src)
-	for _, target := range targets {
-		targetVal := reflect.ValueOf(target)
-		if targetVal.Kind() == reflect.Ptr &&
-			targetVal.Elem().Type() == srcVal.Type() &&
-			targetVal.Elem().CanSet() {
-			targetVal.Elem().Set(srcVal)
+	targetVal := reflect.ValueOf(target)
+	if srcVal.Type().ConvertibleTo(targetVal.Type()) {
+		if (isInt(targetVal) && isInt(srcVal)) &&
+			targetVal.OverflowInt(srcVal.Int()) {
+			Printfln("Int overflow")
+			return src, false
+		} else if isFloat(targetVal) && isFloat(srcVal) &&
+			targetVal.OverflowFloat(srcVal.Float()) {
+			Printfln("Float overflow")
+			return src, false
 		}
+		result = srcVal.Convert(targetVal.Type()).Interface()
+		assigned = true
+	} else {
+		result = src
 	}
-}
-
-func contains(slice interface{}, target interface{}) (found bool) {
-	sliceVal := reflect.ValueOf(slice)
-	if sliceVal.Kind() == reflect.Slice {
-		for i := 0; i < sliceVal.Len(); i++ {
-			if reflect.DeepEqual(sliceVal.Index(i).Interface(), target) {
-				found = true
-			}
-		}
-	}
-
 	return
+}
+func swap(first interface{}, second interface{}) {
+	firstValue, secondValue := reflect.ValueOf(first),
+		reflect.ValueOf(second)
+	if firstValue.Type() == secondValue.Type() &&
+		firstValue.Kind() == reflect.Ptr &&
+		firstValue.Elem().CanSet() &&
+		secondValue.Elem().CanSet() {
+		temp := reflect.New(firstValue.Elem().Type())
+		temp.Elem().Set(firstValue.Elem())
+		firstValue.Elem().Set(secondValue.Elem())
+		secondValue.Elem().Set(temp.Elem())
+	}
 }
 
 func main() {
-	//names := []string{"Alice", "Bob", "Charlie"}
-	//val := selectValue(names, 1).(string)
-	//Printfln("Selected: %v", val)
 	name := "Alice"
 	price := 279
 	city := "London"
-	incrementOrUpper(name, price, city)
+	newVal, ok := convert(price, 100.00)
+	Printfln("Converted %v: %v, %T", ok, newVal, newVal)
+	newVal, ok = convert(name, 100.00)
+	Printfln("Converted %v: %v, %T", ok, newVal, newVal)
+
+	newVal, ok = convert(5000, int8(100))
+	Printfln("Converted %v: %v, %T", ok, newVal, newVal)
+
+	swap(&name, &city)
 	for _, val := range []interface{}{name, price, city} {
 		Printfln("Value: %v", val)
 	}
-
-	setAll("New String", &name, &price, &city)
-	setAll(10, &name, &price, &city)
-	for _, val := range []interface{}{name, price, city} {
-		Printfln("Value: %v", val)
-	}
-
-	citiesSlice := []string{"Paris", "Rome", "London"}
-	Printfln("Found #1: %v", contains(citiesSlice, city))
-	sliceOfSlices := [][]string{citiesSlice, {"First", "Second", "Third"}}
-	Printfln("Found #2: %v", contains(sliceOfSlices, citiesSlice))
 
 }
