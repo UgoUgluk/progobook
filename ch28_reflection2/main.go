@@ -2,96 +2,136 @@ package main
 
 import (
 	"reflect"
-	"strings"
-	//"strings"
-	//"fmt"
 )
 
-func describeMap(m interface{}) {
-	mapType := reflect.TypeOf(m)
-	if mapType.Kind() == reflect.Map {
-		Printfln("Key type: %v, Val type: %v", mapType.Key(),
-			mapType.Elem())
-	} else {
-		Printfln("Not a map")
+func inspectStructs(structs ...interface{}) {
+	for _, s := range structs {
+		structType := reflect.TypeOf(s)
+		if structType.Kind() == reflect.Struct {
+			inspectStructType([]int{}, structType)
+		}
 	}
 }
-func printMapContents(m interface{}) {
-	mapValue := reflect.ValueOf(m)
-	if mapValue.Kind() == reflect.Map {
-		iter := mapValue.MapRange()
-		for iter.Next() {
-			Printfln("Map Key: %v, Value: %v", iter.Key(),
-				iter.Value())
+func inspectStructType(baseIndex []int, structType reflect.Type) {
+	Printfln("--- Struct Type: %v", structType)
+	for i := 0; i < structType.NumField(); i++ {
+		fieldIndex := append(baseIndex, i)
+		field := structType.Field(i)
+		Printfln("Field %v: Name: %v, Type: %v, Exported: %v",
+			fieldIndex, field.Name, field.Type, field.PkgPath == "")
+		if field.Type.Kind() == reflect.Struct {
+			field := structType.FieldByIndex(fieldIndex)
+			inspectStructType(fieldIndex, field.Type)
 		}
+
+	}
+	Printfln("--- End Struct Type: %v", structType)
+}
+func describeField(s interface{}, fieldName string) {
+	structType := reflect.TypeOf(s)
+	field, found := structType.FieldByName(fieldName)
+	if found {
+		Printfln("Found: %v, Type: %v, Index: %v",
+			field.Name, field.Type, field.Index)
+		index := field.Index
+		for len(index) > 1 {
+			index = index[0 : len(index)-1]
+			field = structType.FieldByIndex(index)
+			Printfln("Parent : %v, Type: %v, Index: %v",
+				field.Name, field.Type, field.Index)
+		}
+		Printfln("Top-Level Type: %v", structType)
 	} else {
-		Printfln("Not a map")
+		Printfln("Field %v not found", fieldName)
 	}
 }
 
-func setMap(m interface{}, key interface{}, val interface{}) {
-	mapValue := reflect.ValueOf(m)
-	keyValue := reflect.ValueOf(key)
-	valValue := reflect.ValueOf(val)
-	if mapValue.Kind() == reflect.Map &&
-		mapValue.Type().Key() == keyValue.Type() &&
-		mapValue.Type().Elem() == valValue.Type() {
-		mapValue.SetMapIndex(keyValue, valValue)
-	} else {
-		Printfln("Not a map or mismatched types")
+func inspectTags(s interface{}, tagName string) {
+	structType := reflect.TypeOf(s)
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		tag := field.Tag
+		valGet := tag.Get(tagName)
+		valLookup, ok := tag.Lookup(tagName)
+		Printfln("Field: %v, Tag %v: %v", field.Name, tagName,
+			valGet)
+		Printfln("Field: %v, Tag %v: %v, Set: %v",
+			field.Name, tagName, valLookup, ok)
 	}
 }
-func removeFromMap(m interface{}, key interface{}) {
-	mapValue := reflect.ValueOf(m)
-	keyValue := reflect.ValueOf(key)
-	if mapValue.Kind() == reflect.Map &&
-		mapValue.Type().Key() == keyValue.Type() {
-		mapValue.SetMapIndex(keyValue, reflect.Value{})
-	}
+
+// Person present person
+type Person struct {
+	Name    string `alias:"id"`
+	City    string `alias:""`
+	Country string
 }
-func createMap(slice interface{}, op func(interface{}) interface{}) interface{} {
-	sliceVal := reflect.ValueOf(slice)
-	if sliceVal.Kind() == reflect.Slice {
-		mapType := reflect.MapOf(sliceVal.Type().Elem(),
-			sliceVal.Type().Elem())
-		mapVal := reflect.MakeMap(mapType)
-		for i := 0; i < sliceVal.Len(); i++ {
-			elemVal := sliceVal.Index(i)
-			mapVal.SetMapIndex(elemVal,
-				reflect.ValueOf(op(elemVal.Interface())))
+
+func getFieldValues(s interface{}) {
+	structValue := reflect.ValueOf(s)
+	if structValue.Kind() == reflect.Struct {
+		for i := 0; i < structValue.NumField(); i++ {
+			fieldType := structValue.Type().Field(i)
+			fieldVal := structValue.Field(i)
+			Printfln("Name: %v, Type: %v, Value: %v",
+				fieldType.Name, fieldType.Type, fieldVal)
 		}
-		return mapVal.Interface()
+	} else {
+		Printfln("Not a struct")
 	}
-	return nil
+}
+
+func setFieldValue(s interface{}, newVals map[string]interface{}) {
+	structValue := reflect.ValueOf(s)
+	if structValue.Kind() == reflect.Ptr &&
+		structValue.Elem().Kind() == reflect.Struct {
+		for name, newValue := range newVals {
+			fieldVal := structValue.Elem().FieldByName(name)
+			if fieldVal.CanSet() {
+				fieldVal.Set(reflect.ValueOf(newValue))
+			} else if fieldVal.CanAddr() {
+				ptr := fieldVal.Addr()
+				if ptr.CanSet() {
+					ptr.Set(reflect.ValueOf(newValue))
+				} else {
+					Printfln("Cannot set field via pointer")
+				}
+			} else {
+				Printfln("Cannot set field")
+			}
+		}
+	} else {
+		Printfln("Not a pointer to a struct")
+	}
 }
 
 func main() {
-	pricesMap := map[string]float64{
-		"Kayak": 279, "Lifejacket": 48.95, "Soccer Ball": 19.50,
-	}
-	describeMap(pricesMap)
+	inspectStructs(Purchase{})
 
-	printMapContents(pricesMap)
+	describeField(Purchase{}, "Price")
 
-	//set and remove
-	setMap(pricesMap, "Kayak", 100.00)
-	setMap(pricesMap, "Hat", 10.00)
-	removeFromMap(pricesMap, "Lifejacket")
-	for k, v := range pricesMap {
-		Printfln("Key: %v, Value: %v", k, v)
-	}
+	inspectTags(Person{}, "alias")
 
-	//create
-	names := []string{"Alice", "Bob", "Charlie"}
-	reverse := func(val interface{}) interface{} {
-		if str, ok := val.(string); ok {
-			return strings.ToUpper(str)
-		}
-		return val
-	}
-	namesMap := createMap(names, reverse).(map[string]string)
-	for k, v := range namesMap {
-		Printfln("Key: %v, Value:%v", k, v)
-	}
+	stringType := reflect.TypeOf("this is a string")
+	structType := reflect.StructOf([]reflect.StructField{
+		{Name: "Name", Type: stringType, Tag: `alias:"id"`},
+		{Name: "City", Type: stringType, Tag: `alias:""`},
+		{Name: "Country", Type: stringType},
+	})
+	inspectTags(reflect.New(structType), "alias")
+
+	product := Product{Name: "Kayak", Category: "Watersports",
+		Price: 279}
+	customer := Customer{Name: "Acme", City: "Chicago"}
+	purchase := Purchase{
+		Customer: customer,
+		Product:  product,
+		Total:    279,
+		taxRate:  10}
+	setFieldValue(&purchase, map[string]interface{}{
+		"City": "London", "Category": "Boats", "Total": 100.50,
+	})
+
+	getFieldValues(purchase)
 
 }
