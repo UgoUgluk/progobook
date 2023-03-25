@@ -2,97 +2,96 @@ package main
 
 import (
 	"reflect"
+	"strings"
+	//"strings"
+	//"fmt"
 )
 
-func setValue(arrayOrSlice interface{}, index int, replacement interface{}) {
-	arrayOrSliceVal := reflect.ValueOf(arrayOrSlice)
-	replacementVal := reflect.ValueOf(replacement)
-	if arrayOrSliceVal.Kind() == reflect.Slice {
-		elemVal := arrayOrSliceVal.Index(index)
-		if elemVal.CanSet() {
-			elemVal.Set(replacementVal)
+func describeMap(m interface{}) {
+	mapType := reflect.TypeOf(m)
+	if mapType.Kind() == reflect.Map {
+		Printfln("Key type: %v, Val type: %v", mapType.Key(),
+			mapType.Elem())
+	} else {
+		Printfln("Not a map")
+	}
+}
+func printMapContents(m interface{}) {
+	mapValue := reflect.ValueOf(m)
+	if mapValue.Kind() == reflect.Map {
+		iter := mapValue.MapRange()
+		for iter.Next() {
+			Printfln("Map Key: %v, Value: %v", iter.Key(),
+				iter.Value())
 		}
-	} else if arrayOrSliceVal.Kind() == reflect.Ptr &&
-		arrayOrSliceVal.Elem().Kind() == reflect.Array &&
-		arrayOrSliceVal.Elem().CanSet() {
-		arrayOrSliceVal.Elem().Index(index).Set(replacementVal)
+	} else {
+		Printfln("Not a map")
 	}
 }
 
-func checkElemType(val interface{}, arrOrSlice interface{}) bool {
-	elemType := reflect.TypeOf(val)
-	arrOrSliceType := reflect.TypeOf(arrOrSlice)
-	return (arrOrSliceType.Kind() == reflect.Array ||
-		arrOrSliceType.Kind() == reflect.Slice) &&
-		arrOrSliceType.Elem() == elemType
-}
-
-func enumerateStrings(arrayOrSlice interface{}) {
-	arrayOrSliceVal := reflect.ValueOf(arrayOrSlice)
-	if (arrayOrSliceVal.Kind() == reflect.Array ||
-		arrayOrSliceVal.Kind() == reflect.Slice) &&
-		arrayOrSliceVal.Type().Elem().Kind() == reflect.String {
-		for i := 0; i < arrayOrSliceVal.Len(); i++ {
-			Printfln("Element: %v, Value: %v", i,
-				arrayOrSliceVal.Index(i).String())
-		}
+func setMap(m interface{}, key interface{}, val interface{}) {
+	mapValue := reflect.ValueOf(m)
+	keyValue := reflect.ValueOf(key)
+	valValue := reflect.ValueOf(val)
+	if mapValue.Kind() == reflect.Map &&
+		mapValue.Type().Key() == keyValue.Type() &&
+		mapValue.Type().Elem() == valValue.Type() {
+		mapValue.SetMapIndex(keyValue, valValue)
+	} else {
+		Printfln("Not a map or mismatched types")
 	}
 }
-
-func findAndSplit(slice interface{}, target interface{}) interface{} {
-	sliceVal := reflect.ValueOf(slice)
-	targetType := reflect.TypeOf(target)
-	if sliceVal.Kind() == reflect.Slice && sliceVal.Type().Elem() == targetType {
-		for i := 0; i < sliceVal.Len(); i++ {
-			if sliceVal.Index(i).Interface() == target {
-				return sliceVal.Slice(0, i+1)
-			}
-		}
+func removeFromMap(m interface{}, key interface{}) {
+	mapValue := reflect.ValueOf(m)
+	keyValue := reflect.ValueOf(key)
+	if mapValue.Kind() == reflect.Map &&
+		mapValue.Type().Key() == keyValue.Type() {
+		mapValue.SetMapIndex(keyValue, reflect.Value{})
 	}
-	return slice
 }
-
-func pickValues(slice interface{}, indices ...int) interface{} {
+func createMap(slice interface{}, op func(interface{}) interface{}) interface{} {
 	sliceVal := reflect.ValueOf(slice)
 	if sliceVal.Kind() == reflect.Slice {
-		newSlice := reflect.MakeSlice(sliceVal.Type(), 0, 10)
-		for _, index := range indices {
-			newSlice = reflect.Append(newSlice,
-				sliceVal.Index(index))
+		mapType := reflect.MapOf(sliceVal.Type().Elem(),
+			sliceVal.Type().Elem())
+		mapVal := reflect.MakeMap(mapType)
+		for i := 0; i < sliceVal.Len(); i++ {
+			elemVal := sliceVal.Index(i)
+			mapVal.SetMapIndex(elemVal,
+				reflect.ValueOf(op(elemVal.Interface())))
 		}
-		return newSlice
+		return mapVal.Interface()
 	}
 	return nil
 }
 
 func main() {
-	name := "Alice"
-	city := "London"
-	hobby := "Running"
-	slice := []string{name, city, hobby}
-	array := [3]string{name, city, hobby}
-	Printfln("Slice (string): %v", checkElemType("testString", slice))
-	Printfln("Array (string): %v", checkElemType("testString", array))
-	Printfln("Array (int): %v", checkElemType(10, array))
+	pricesMap := map[string]float64{
+		"Kayak": 279, "Lifejacket": 48.95, "Soccer Ball": 19.50,
+	}
+	describeMap(pricesMap)
 
-	Printfln("Original slice: %v", slice)
-	newCity := "Paris"
-	setValue(slice, 1, newCity)
-	Printfln("Modified slice: %v", slice)
-	Printfln("Original slice: %v", array)
-	newCity = "Rome"
-	setValue(&array, 1, newCity)
-	Printfln("Modified slice: %v", array)
+	printMapContents(pricesMap)
 
-	enumerateStrings(slice)
-	enumerateStrings(array)
+	//set and remove
+	setMap(pricesMap, "Kayak", 100.00)
+	setMap(pricesMap, "Hat", 10.00)
+	removeFromMap(pricesMap, "Lifejacket")
+	for k, v := range pricesMap {
+		Printfln("Key: %v, Value: %v", k, v)
+	}
 
-	Printfln("Strings: %v", findAndSplit(slice, "London"))
-	numbers := []int{1, 3, 4, 5, 7}
-	Printfln("Numbers: %v", findAndSplit(numbers, 4))
-
-	slice2 := []string{name, city, hobby, "Bob", "Paris", "Soccer"}
-	picked := pickValues(slice2, 0, 3, 5)
-	Printfln("Picked values: %v", picked)
+	//create
+	names := []string{"Alice", "Bob", "Charlie"}
+	reverse := func(val interface{}) interface{} {
+		if str, ok := val.(string); ok {
+			return strings.ToUpper(str)
+		}
+		return val
+	}
+	namesMap := createMap(names, reverse).(map[string]string)
+	for k, v := range namesMap {
+		Printfln("Key: %v, Value:%v", k, v)
+	}
 
 }
