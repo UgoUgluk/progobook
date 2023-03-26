@@ -4,37 +4,48 @@ import (
 	"reflect"
 )
 
-func inspectMethods(s interface{}) {
-	sType := reflect.TypeOf(s)
-	if sType.Kind() == reflect.Struct ||
-		(sType.Kind() == reflect.Ptr &&
-			sType.Elem().Kind() == reflect.Struct) {
-		Printfln("Type: %v, Methods: %v", sType, sType.NumMethod())
-		for i := 0; i < sType.NumMethod(); i++ {
-			method := sType.Method(i)
-			Printfln("Method name: %v, Type: %v", method.Name, method.Type)
+func checkImplementation(check interface{}, targets ...interface{}) {
+	checkType := reflect.TypeOf(check)
+	if checkType.Kind() == reflect.Ptr &&
+		checkType.Elem().Kind() == reflect.Interface {
+		checkType := checkType.Elem()
+		for _, target := range targets {
+			targetType := reflect.TypeOf(target)
+			Printfln("Type %v implements %v: %v",
+				targetType, checkType, targetType.Implements(checkType))
 		}
 	}
 }
 
-func executeFirstVoidMethod(s interface{}) {
-	sVal := reflect.ValueOf(s)
-	for i := 0; i < sVal.NumMethod(); i++ {
-		method := sVal.Type().Method(i)
-		if method.Type.NumIn() == 1 {
-			results := method.Func.Call([]reflect.Value{sVal})
-			Printfln("Type: %v, Method: %v, Results: %v", sVal.Type(), method.Name, results)
-			break
-		} else {
-			Printfln("Skipping method %v %v", method.Name, method.Type.NumIn())
+type wrapper struct {
+	NamedItem
+}
+
+func getUnderlying(item wrapper, fieldName string) {
+	itemVal := reflect.ValueOf(item)
+	fieldVal := itemVal.FieldByName(fieldName)
+	Printfln("Field Type: %v", fieldVal.Type())
+	for i := 0; i < fieldVal.Type().NumMethod(); i++ {
+		method := fieldVal.Type().Method(i)
+		Printfln("Interface Method: %v, Exported: %v",
+			method.Name, method.PkgPath == "")
+	}
+	Printfln("--------")
+
+	if fieldVal.Kind() == reflect.Interface {
+		Printfln("Underlying Type: %v",
+			fieldVal.Elem().Type())
+		for i := 0; i < fieldVal.Elem().Type().NumMethod(); i++ {
+			method := fieldVal.Elem().Type().Method(i)
+			Printfln("Underlying Method: %v", method.Name)
 		}
 	}
 }
 
 func main() {
-	inspectMethods(Purchase{})
-	inspectMethods(&Purchase{})
+	currencyItemType := (*CurrencyItem)(nil)
+	checkImplementation(currencyItemType, Product{}, &Product{}, &Purchase{})
 
-	executeFirstVoidMethod(&Product{Name: "Kayak", Price: 279})
+	getUnderlying(wrapper{NamedItem: &Product{}}, "NamedItem")
 
 }
