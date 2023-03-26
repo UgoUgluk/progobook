@@ -11,7 +11,7 @@ func sortAndTotal(vals []int) (sorted []int, total int) {
 	sort.Ints(sorted)
 	for _, val := range sorted {
 		total += val
-		total++
+		//total++
 	}
 	return
 }
