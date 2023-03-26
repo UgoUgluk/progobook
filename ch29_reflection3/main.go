@@ -4,48 +4,102 @@ import (
 	"reflect"
 )
 
-func checkImplementation(check interface{}, targets ...interface{}) {
-	checkType := reflect.TypeOf(check)
-	if checkType.Kind() == reflect.Ptr &&
-		checkType.Elem().Kind() == reflect.Interface {
-		checkType := checkType.Elem()
-		for _, target := range targets {
-			targetType := reflect.TypeOf(target)
-			Printfln("Type %v implements %v: %v",
-				targetType, checkType, targetType.Implements(checkType))
+func inspectChannel(channel interface{}) {
+	channelType := reflect.TypeOf(channel)
+	if channelType.Kind() == reflect.Chan {
+		Printfln("Type %v, Direction: %v",
+			channelType.Elem(), channelType.ChanDir())
+	}
+}
+func sendOverChannel(channel interface{}, data interface{}) {
+	channelVal := reflect.ValueOf(channel)
+	dataVal := reflect.ValueOf(data)
+	if channelVal.Kind() == reflect.Chan &&
+		dataVal.Kind() == reflect.Slice &&
+		channelVal.Type().Elem() ==
+			dataVal.Type().Elem() {
+		for i := 0; i < dataVal.Len(); i++ {
+			val := dataVal.Index(i)
+			channelVal.Send(val)
 		}
+		channelVal.Close()
+	} else {
+		Printfln("Unexpected types: %v, %v",
+			channelVal.Type(), dataVal.Type())
 	}
 }
 
-type wrapper struct {
-	NamedItem
+func createChannelAndSend(data interface{}) interface{} {
+	dataVal := reflect.ValueOf(data)
+	channelType := reflect.ChanOf(reflect.BothDir,
+		dataVal.Type().Elem())
+	channel := reflect.MakeChan(channelType, 1)
+	go func() {
+		for i := 0; i < dataVal.Len(); i++ {
+			channel.Send(dataVal.Index(i))
+		}
+		channel.Close()
+	}()
+	return channel.Interface()
 }
-
-func getUnderlying(item wrapper, fieldName string) {
-	itemVal := reflect.ValueOf(item)
-	fieldVal := itemVal.FieldByName(fieldName)
-	Printfln("Field Type: %v", fieldVal.Type())
-	for i := 0; i < fieldVal.Type().NumMethod(); i++ {
-		method := fieldVal.Type().Method(i)
-		Printfln("Interface Method: %v, Exported: %v",
-			method.Name, method.PkgPath == "")
+func readChannels(channels ...interface{}) {
+	channelsVal := reflect.ValueOf(channels)
+	cases := []reflect.SelectCase{}
+	for i := 0; i < channelsVal.Len(); i++ {
+		cases = append(cases, reflect.SelectCase{
+			Chan: channelsVal.Index(i).Elem(),
+			Dir:  reflect.SelectRecv,
+		})
 	}
-	Printfln("--------")
-
-	if fieldVal.Kind() == reflect.Interface {
-		Printfln("Underlying Type: %v",
-			fieldVal.Elem().Type())
-		for i := 0; i < fieldVal.Elem().Type().NumMethod(); i++ {
-			method := fieldVal.Elem().Type().Method(i)
-			Printfln("Underlying Method: %v", method.Name)
+	for {
+		caseIndex, val, ok := reflect.Select(cases)
+		if ok {
+			Printfln("Value read: %v, Type: %v", val,
+				val.Type())
+		} else {
+			if len(cases) == 1 {
+				Printfln("All channels closed.")
+				return
+			}
+			cases = append(cases[:caseIndex],
+				cases[caseIndex+1:]...)
 		}
 	}
 }
 
 func main() {
-	currencyItemType := (*CurrencyItem)(nil)
-	checkImplementation(currencyItemType, Product{}, &Product{}, &Purchase{})
+	//inspectChannel
+	var c chan<- string
+	inspectChannel(c)
 
-	getUnderlying(wrapper{NamedItem: &Product{}}, "NamedItem")
+	//sendOverChannel
+	values1 := []string{"Alice", "Bob", "Charlie", "Dora"}
+	channel1 := make(chan string)
+	go sendOverChannel(channel1, values1)
+	for {
+		if val, open := <-channel1; open {
+			Printfln("Received value: %v", val)
+		} else {
+			break
+		}
+	}
+
+	//createChannelAndSend
+	values := []string{"Alice", "Bob", "Charlie", "Dora"}
+	channel := createChannelAndSend(values).(chan string)
+	for {
+		if val, open := <-channel; open {
+			Printfln("Received value: %v", val)
+		} else {
+			break
+		}
+	}
+
+	//readChannels
+	cities := []string{"London", "Rome", "Paris"}
+	cityChannel := createChannelAndSend(cities).(chan string)
+	prices := []float64{279, 48.95, 19.50}
+	priceChannel := createChannelAndSend(prices).(chan float64)
+	readChannels(channel, cityChannel, priceChannel)
 
 }
