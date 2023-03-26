@@ -1,137 +1,121 @@
 package main
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 )
 
-func inspectStructs(structs ...interface{}) {
-	for _, s := range structs {
-		structType := reflect.TypeOf(s)
-		if structType.Kind() == reflect.Struct {
-			inspectStructType([]int{}, structType)
-		}
-	}
-}
-func inspectStructType(baseIndex []int, structType reflect.Type) {
-	Printfln("--- Struct Type: %v", structType)
-	for i := 0; i < structType.NumField(); i++ {
-		fieldIndex := append(baseIndex, i)
-		field := structType.Field(i)
-		Printfln("Field %v: Name: %v, Type: %v, Exported: %v",
-			fieldIndex, field.Name, field.Type, field.PkgPath == "")
-		if field.Type.Kind() == reflect.Struct {
-			field := structType.FieldByIndex(fieldIndex)
-			inspectStructType(fieldIndex, field.Type)
-		}
-
-	}
-	Printfln("--- End Struct Type: %v", structType)
-}
-func describeField(s interface{}, fieldName string) {
-	structType := reflect.TypeOf(s)
-	field, found := structType.FieldByName(fieldName)
-	if found {
-		Printfln("Found: %v, Type: %v, Index: %v",
-			field.Name, field.Type, field.Index)
-		index := field.Index
-		for len(index) > 1 {
-			index = index[0 : len(index)-1]
-			field = structType.FieldByIndex(index)
-			Printfln("Parent : %v, Type: %v, Index: %v",
-				field.Name, field.Type, field.Index)
-		}
-		Printfln("Top-Level Type: %v", structType)
-	} else {
-		Printfln("Field %v not found", fieldName)
-	}
-}
-
-func inspectTags(s interface{}, tagName string) {
-	structType := reflect.TypeOf(s)
-	for i := 0; i < structType.NumField(); i++ {
-		field := structType.Field(i)
-		tag := field.Tag
-		valGet := tag.Get(tagName)
-		valLookup, ok := tag.Lookup(tagName)
-		Printfln("Field: %v, Tag %v: %v", field.Name, tagName,
-			valGet)
-		Printfln("Field: %v, Tag %v: %v, Set: %v",
-			field.Name, tagName, valLookup, ok)
-	}
-}
-
-// Person present person
-type Person struct {
-	Name    string `alias:"id"`
-	City    string `alias:""`
-	Country string
-}
-
-func getFieldValues(s interface{}) {
-	structValue := reflect.ValueOf(s)
-	if structValue.Kind() == reflect.Struct {
-		for i := 0; i < structValue.NumField(); i++ {
-			fieldType := structValue.Type().Field(i)
-			fieldVal := structValue.Field(i)
-			Printfln("Name: %v, Type: %v, Value: %v",
-				fieldType.Name, fieldType.Type, fieldVal)
-		}
-	} else {
-		Printfln("Not a struct")
-	}
-}
-
-func setFieldValue(s interface{}, newVals map[string]interface{}) {
-	structValue := reflect.ValueOf(s)
-	if structValue.Kind() == reflect.Ptr &&
-		structValue.Elem().Kind() == reflect.Struct {
-		for name, newValue := range newVals {
-			fieldVal := structValue.Elem().FieldByName(name)
-			if fieldVal.CanSet() {
-				fieldVal.Set(reflect.ValueOf(newValue))
-			} else if fieldVal.CanAddr() {
-				ptr := fieldVal.Addr()
-				if ptr.CanSet() {
-					ptr.Set(reflect.ValueOf(newValue))
-				} else {
-					Printfln("Cannot set field via pointer")
-				}
+func inspectFuncType(f interface{}) {
+	funcType := reflect.TypeOf(f)
+	if funcType.Kind() == reflect.Func {
+		Printfln("Function parameters: %v", funcType.NumIn())
+		for i := 0; i < funcType.NumIn(); i++ {
+			paramType := funcType.In(i)
+			if i < funcType.NumIn()-1 {
+				Printfln("Parameter #%v, Type: %v", i,
+					paramType)
 			} else {
-				Printfln("Cannot set field")
+				Printfln("Parameter #%v, Type: %v, Variadic: %v", i, paramType,
+					funcType.IsVariadic())
 			}
 		}
-	} else {
-		Printfln("Not a pointer to a struct")
+		Printfln("Function results: %v", funcType.NumOut())
+		for i := 0; i < funcType.NumOut(); i++ {
+			resultType := funcType.Out(i)
+			Printfln("Result #%v, Type: %v", i, resultType)
+		}
 	}
+}
+func invokeFunction(f interface{}, params ...interface{}) {
+	paramVals := []reflect.Value{}
+	for _, p := range params {
+		paramVals = append(paramVals, reflect.ValueOf(p))
+	}
+	funcVal := reflect.ValueOf(f)
+	if funcVal.Kind() == reflect.Func {
+		results := funcVal.Call(paramVals)
+		for i, r := range results {
+			Printfln("Result #%v: %v", i, r)
+		}
+	}
+}
+
+func mapSlice(slice interface{}, mapper interface{}) (mapped []interface{}) {
+	sliceVal := reflect.ValueOf(slice)
+	mapperVal := reflect.ValueOf(mapper)
+	mapped = []interface{}{}
+	if sliceVal.Kind() == reflect.Slice && mapperVal.Kind() == reflect.Func {
+		paramTypes := []reflect.Type{sliceVal.Type().Elem()}
+		resultTypes := []reflect.Type{}
+		for i := 0; i < mapperVal.Type().NumOut(); i++ {
+			resultTypes = append(resultTypes, mapperVal.Type().Out(i))
+		}
+		expectedFuncType := reflect.FuncOf(paramTypes, resultTypes, mapperVal.Type().IsVariadic())
+		if mapperVal.Type() == expectedFuncType {
+			for i := 0; i < sliceVal.Len(); i++ {
+				result := mapperVal.Call([]reflect.Value{sliceVal.Index(i)})
+				for _, r := range result {
+					mapped = append(mapped, r.Interface())
+				}
+			}
+		} else {
+			Printfln("Function type not as expected")
+		}
+	}
+	return
+}
+
+func makeMapperFunc(mapper interface{}) interface{} {
+	mapVal := reflect.ValueOf(mapper)
+	if mapVal.Kind() == reflect.Func &&
+		mapVal.Type().NumIn() == 1 &&
+		mapVal.Type().NumOut() == 1 {
+
+		inType := reflect.SliceOf(mapVal.Type().In(0))
+		inTypeSlice := []reflect.Type{inType}
+		outType := reflect.SliceOf(mapVal.Type().Out(0))
+		outTypeSlice := []reflect.Type{outType}
+		funcType := reflect.FuncOf(inTypeSlice, outTypeSlice, false)
+		funcVal := reflect.MakeFunc(funcType,
+			func(params []reflect.Value) (results []reflect.Value) {
+				srcSliceVal := params[0]
+				resultsSliceVal := reflect.MakeSlice(outType, srcSliceVal.Len(), 10)
+				for i := 0; i < srcSliceVal.Len(); i++ {
+					r := mapVal.Call([]reflect.Value{srcSliceVal.Index(i)})
+					resultsSliceVal.Index(i).Set(r[0])
+				}
+				results = []reflect.Value{resultsSliceVal}
+				return
+			})
+		return funcVal.Interface()
+	}
+	Printfln("Unexpected types")
+	return nil
 }
 
 func main() {
-	inspectStructs(Purchase{})
+	inspectFuncType(Find)
 
-	describeField(Purchase{}, "Price")
+	names1 := []string{"Alice", "Bob", "Charlie"}
+	invokeFunction(Find, names1, "London", "Bob")
 
-	inspectTags(Person{}, "alias")
+	results1 := mapSlice(names1, strings.ToUpper)
+	Printfln("Results: %v", results1)
 
-	stringType := reflect.TypeOf("this is a string")
-	structType := reflect.StructOf([]reflect.StructField{
-		{Name: "Name", Type: stringType, Tag: `alias:"id"`},
-		{Name: "City", Type: stringType, Tag: `alias:""`},
-		{Name: "Country", Type: stringType},
-	})
-	inspectTags(reflect.New(structType), "alias")
-
-	product := Product{Name: "Kayak", Category: "Watersports",
-		Price: 279}
-	customer := Customer{Name: "Acme", City: "Chicago"}
-	purchase := Purchase{
-		Customer: customer,
-		Product:  product,
-		Total:    279,
-		taxRate:  10}
-	setFieldValue(&purchase, map[string]interface{}{
-		"City": "London", "Category": "Boats", "Total": 100.50,
-	})
-
-	getFieldValues(purchase)
+	lowerStringMapper := makeMapperFunc(strings.ToLower).(func([]string) []string)
+	names := []string{"Alice", "Bob", "Charlie"}
+	results := lowerStringMapper(names)
+	Printfln("Lowercase Results: %v", results)
+	incrementFloatMapper := makeMapperFunc(func(val float64) float64 {
+		return val + 1
+	}).(func([]float64) []float64)
+	prices := []float64{279, 48.95, 19.50}
+	floatResults := incrementFloatMapper(prices)
+	Printfln("Increment Results: %v", floatResults)
+	floatToStringMapper := makeMapperFunc(func(val float64) string {
+		return fmt.Sprintf("$%.2f", val)
+	}).(func([]float64) []string)
+	Printfln("Price Results: %v", floatToStringMapper(prices))
 
 }
