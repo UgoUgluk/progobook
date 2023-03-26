@@ -20,3 +20,4 @@ use ./ch27_reflection
 use ./ch28_reflection2
 use ./ch29_reflection3
 use ./ch30_coordination
+use ./ch31_tests
